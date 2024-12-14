@@ -1,0 +1,212 @@
+class SparseMatrix:
+    """
+    Класс для работы с разреженными матрицами.
+    """
+    def __init__(self, n, m, values=None):
+        """
+        Инициализирует размеры матрицы.
+        Если передан параметр `values`, то заполняет матрицу.
+        """
+        self.n = n
+        self.m = m
+        self.data = {}
+
+        # Если передан готовый список, заполняем матрицу
+        if values is not None:
+            for i, row in enumerate(values, start=1):
+                for j, value in enumerate(row, start=1):
+                    if value != 0:
+                        self.set_value(i, j, value)
+
+    def set_value(self, i, j, value):
+        """
+        Устанавливает значение элемента матрицы (хранятся только ненулевые).
+        """
+        if value != 0:
+            self.data[(i, j)] = value
+
+    def get_value(self, i, j):
+        """
+        Возвращает значение элемента матрицы (если элемент отсутствует, возвращает 0).
+        """
+        return self.data.get((i, j), 0)
+
+    def trace(self):
+        """
+        Вычисляет след матрицы (сумму элементов главной диагонали).
+        """
+        if self.n != self.m:
+            raise ValueError("След определён только для квадратных матриц.")
+        return sum(self.get_value(i, i) for i in range(1, self.n + 1))
+
+    def display(self):
+        """
+        Возвращает матрицу в виде двумерного списка для отображения.
+        """
+        return [[self.get_value(i, j) for j in range(1, self.m + 1)] for i in range(1, self.n + 1)]
+
+def add_matrices(mat1, mat2):
+    """
+    Выполняет сложение двух матриц.
+    Формула:
+        C[i, j] = A[i, j] + B[i, j]
+    Аргументы:
+        mat1, mat2 (SparseMatrix): складываемые матрицы.
+    Возвращает:
+        SparseMatrix: матрица, содержащая сумму.
+    """
+    result = SparseMatrix(mat1.n, mat1.m)
+    for (i, j) in set(mat1.data.keys()).union(mat2.data.keys()):
+        result.set_value(i, j, mat1.get_value(i, j) + mat2.get_value(i, j))
+    return result
+
+
+def multiply_by_scalar(matrix, scalar):
+    """
+    Выполняет умножение матрицы на скаляр.
+    Формула:
+        C[i, j] = A[i, j] * scalar
+    Аргументы:
+        matrix (SparseMatrix): исходная матрица.
+        scalar (float): скаляр, на который умножается матрица.
+    Возвращает:
+        SparseMatrix: результат умножения на скаляр.
+    """
+    result = SparseMatrix(matrix.n, matrix.m)
+    for (i, j), value in matrix.data.items():
+        result.set_value(i, j, value * scalar)
+    return result
+
+
+def multiply_matrices(mat1, mat2):
+    """
+    Выполняет умножение двух матриц.
+    Формула:
+        C[i, j] = Σ A[i, k] * B[k, j], где k = 1, ..., mat1.m
+    Аргументы:
+        mat1, mat2 (SparseMatrix): умножаемые матрицы.
+    Возвращает:
+        SparseMatrix: результат умножения.
+    """
+    result = SparseMatrix(mat1.n, mat2.m)
+    for i in range(1, mat1.n + 1):
+        for j in range(1, mat2.m + 1):
+            sum_value = sum(mat1.get_value(i, k) * mat2.get_value(k, j) for k in range(1, mat1.m + 1))
+            if sum_value != 0:
+                result.set_value(i, j, sum_value)
+    return result
+
+
+def determinant(matrix):
+    """
+    Вычисляет определитель квадратной матрицы методом разложения по строке.
+    Формулы:
+        1. Для матрицы размера 1x1: det(A) = A[0, 0]
+        2. Для матрицы размера 2x2: det(A) = A[0,0] * A[1,1] - A[0,1] * A[1,0]
+        3. Для матрицы NxN: det(A) = Σ (-1)^j * A[0, j] * det(minor(A, 0, j)),
+           где minor(A, i, j) — это матрица без строки i и столбца j.
+    Аргументы:
+        matrix (SparseMatrix): исходная квадратная матрица.
+    Возвращает:
+        float: определитель матрицы.
+    """
+    n = matrix.n
+    mat = [[matrix.get_value(i, j) for j in range(1, n + 1)] for i in range(1, n + 1)]
+
+    def minor(matrix, row, col):
+        """
+        Возвращает минор матрицы (матрица без указанной строки и столбца).
+        """
+        return [[matrix[i][j] for j in range(len(matrix)) if j != col] for i in range(len(matrix)) if i != row]
+
+    def determinant_recursive(matrix):
+        """
+        Рекурсивное вычисление определителя матрицы.
+        """
+        if len(matrix) == 1:
+            return matrix[0][0]
+        if len(matrix) == 2:
+            return matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]
+        return sum((-1 if c % 2 else 1) * matrix[0][c] * determinant_recursive(minor(matrix, 0, c)) for c in range(len(matrix)))
+
+    return determinant_recursive(mat)
+
+
+"""
+========== Задача 1 ==========
+Введите размеры матрицы (n m):
+"""
+n, m = map(int, input().split())
+matrix = SparseMatrix(n, m)
+for i in range(1, n + 1):
+    row = list(map(float, input().split()))
+    for j, value in enumerate(row, start=1):
+        matrix.set_value(i, j, value)
+
+"""
+========== Задача 1 - след матрицы ==========
+"""
+print(matrix.trace())
+
+"""
+========== Задача 1 - элемент матрицы по индексу ==========
+Введите индексы строки и столбца (i j): 
+"""
+i, j = map(int, input().split())
+print(matrix.get_value(i, j))
+
+
+"""
+========== Задача 2 ==========
+Введите размеры первой матрицы (n m): 
+"""
+n1, m1 = map(int, input().split())
+mat1 = SparseMatrix(n1, m1)
+for i in range(1, n1 + 1):
+    row = list(map(float, input().split()))
+    for j, value in enumerate(row, start=1):
+        mat1.set_value(i, j, value)
+
+"""
+========== Задача 2 Сложение матриц ==========
+"""
+n2, m2 = map(int, input().split())
+mat2 = SparseMatrix(n2, m2)
+for i in range(1, n2 + 1):
+    row = list(map(float, input().split()))
+    for j, value in enumerate(row, start=1):
+        mat2.set_value(i, j, value)
+result = add_matrices(mat1, mat2)
+for row in result.display():
+    print(" ".join(map(str, row)))
+
+"""
+========== Задача 2 Умножение матрицы на скаляр ==========
+"""
+scalar = float(input())
+result = multiply_by_scalar(mat1, scalar)
+for row in result.display():
+    print(" ".join(map(str, row)))
+
+"""========== Задача 2 Умножение двух матриц =========="""
+
+result = multiply_matrices(mat1, mat2)
+print("Результат умножения двух матриц:")
+for row in result.display():
+    print(" ".join(map(str, row)))
+
+
+"""
+========== Задача 3 ==========
+Введите размер квадратной матрицы: 
+"""
+n = int(input())
+matrix = SparseMatrix(n, n)
+for i in range(1, n + 1):
+    row = list(map(float, input().split()))
+    for j, value in enumerate(row, start=1):
+        matrix.set_value(i, j, value)
+
+det = determinant(matrix)
+print(det)
+print("да" if det != 0 else "нет")
